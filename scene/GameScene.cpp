@@ -24,64 +24,21 @@ void GameScene::Initialize() {
 	debugText_ = DebugText::GetInstance();
 	model_ = Model::Create();
 
-	//--------乱数--------
-
-	//乱数シード生成器
-	std::random_device seed_gen;
-	//メルセンヌ・ツイスターの乱数エンジン
-	std::mt19937_64 engine(seed_gen());
-
-	//回転角用
-
-	//乱数範囲の指定
-	std::uniform_real_distribution<float> rotDist(0.0f, PI * 2);
-
-	//座標用
-
-	//乱数範囲の指定
-	std::uniform_real_distribution<float> transDist(-10.0f, 10.0f);
-
-	float rotX;
-	float rotY;
-	float rotZ;
-
-	float transX;
-	float transY;
-	float transZ;
-
 	//ワールドトランスフォーム
 
-	for (WorldTransform& worldTransform : worldTransforms_) {
+	//ワールドトランスフォームの初期化
 
-		//ワールドトランスフォームの初期化
-		worldTransform.Initialize();
+	//親
+	worldTransforms_[0].Initialize();
 
-		rotX = rotDist(engine);
-		rotY = rotDist(engine);
-		rotZ = rotDist(engine);
+	//子
+	worldTransforms_[1].Initialize();
+	worldTransforms_[1].translation_ = {0.0f, 4.5f, 0.0f};
+	worldTransforms_[1].parent_ = &worldTransforms_[0];
 
-		transX = transDist(engine);
-		transY = transDist(engine);
-		transZ = transDist(engine);
-
-		//拡大縮小
-		Vector3 scare_ = {1.0f, 1.0f, 1.0f};
-		//回転
-		Vector3 rot_ = {rotX, rotY, rotZ};
-		//平行移動
-		Vector3 trans_ = {transX, transY, transZ};
-
-		//単位行列を代入する
-		worldTransform.matWorld_ = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-		                            0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f};
-
-		//ワールド変換行列
-		worldTransform.matWorld_ =
-		  World(Scale(scare_), Rot(RotX(rot_.x), RotY(rot_.y), RotZ(rot_.z)), Trans(trans_));
-
-		//行列の転送
-		worldTransform.TransferMatrix();
-	}
+	//	//行列の転送
+	//	worldTransform.TransferMatrix();
+	//}
 
 	////	カメラ視点座標を設定
 	// viewProjection_.eye = {0,0,-10};
@@ -92,17 +49,17 @@ void GameScene::Initialize() {
 	////カメラ上方向ベクトルを設定(右上45度指定)
 	// viewProjection_.up = {cosf(PI / 4.0f), sinf(PI / 4.0f),0.0f};
 
-	//カメラ垂直方向視野角を設定
-	viewProjection_.fovAngleY = (PI / 180) * (10.0f);
+	////カメラ垂直方向視野角を設定
+	// viewProjection_.fovAngleY = (PI / 180) * (10.0f);
 
-	//アスペクト比を設定
-	viewProjection_.aspectRatio = 1.0f;
+	////アスペクト比を設定
+	// viewProjection_.aspectRatio = 1.0f;
 
-	//ニアクリップを設定
-	viewProjection_.nearZ = -1.0f;
+	////ニアクリップを設定
+	// viewProjection_.nearZ = -1.0f;
 
-	//ファークリップ距離を設定
-	viewProjection_.farZ = 53.0f;
+	////ファークリップ距離を設定
+	// viewProjection_.farZ = 53.0f;
 
 	//ビュープロジェクションの初期化
 	viewProjection_.Initialize();
@@ -120,129 +77,35 @@ void GameScene::Update() {
 	//デバックカメラの更新
 	debugCamera_->Update();
 
-	////視点移動処理
-	//{
-	//	//視点の移動ベクトル
-	//	Vector3 move = {0, 0, 0};
-
-	//	//視点移動速さ
-	//	const float kEyeSpeed = 0.2f;
-
-	//	//押した方向で移動ベクトルを変更
-	//	if (input_->PushKey(DIK_W)) {
-	//		move.z += kEyeSpeed;
-	//	} else if (input_->PushKey(DIK_S)) {
-	//		move.z -= kEyeSpeed;
-	//	}
-
-	//	//視点移動(ベクトルの加算)
-	//	viewProjection_.eye += move;
-
-	//	//行列の再計算
-	//	viewProjection_.UpdateMatrix();
-
-	//	//デバック用表示
-	//	debugText_->SetPos(50, 50);
-	//	debugText_->Printf(
-	//	  "eye:(%f,%f,%f)", viewProjection_.eye.x, viewProjection_.eye.y, viewProjection_.eye.z);
-	//}
-
-	////注視点移動処理
-	//{
-	//	//注視点の移動ベクトル
-	//	Vector3 move = {0, 0, 0};
-
-	//	//注視点の移動速さ
-	//	const float kTargetSpeed = 0.2f;
-
-	//	//押した方向で移動ベクトルを変更
-	//	if (input_->PushKey(DIK_LEFT)) {
-	//		move.x -= kTargetSpeed;
-	//	} else if (input_->PushKey(DIK_RIGHT)) {
-	//		move.x += kTargetSpeed;
-	//	}
-
-	//	//注視点移動(ベクトルの加算)
-	//	viewProjection_.target += move;
-
-	//	//行列の再計算
-	//	viewProjection_.UpdateMatrix();
-
-	//	//デバック用表示
-	//	debugText_->SetPos(50, 70);
-	//	debugText_->Printf(
-	//	  "eye:(%f,%f,%f)", viewProjection_.target.x, viewProjection_.target.y,
-	//	  viewProjection_.target.z);
-	//}
-
-	////上方向回転処理
-	//{
-	//	//上方向の回転速さ[ラジアン/flame]
-	//	const float kUpRotSpeed = 0.05f;
-
-	//		//押した方向で移動ベクトルを変更
-	//	if (input_->PushKey(DIK_SPACE)) {
-	//		viewAngle += kUpRotSpeed;
-
-	//		// 2PIを超えたら0に戻す
-	//		viewAngle = fmod(viewAngle, PI * 2.0f);
-	//	}
-
-	//	//上方向ベクトルを計算
-	//	viewProjection_.up = {cosf(viewAngle), sinf(viewAngle),0.0f};
-
-	//	//行列の再計算
-	//	viewProjection_.UpdateMatrix();
-	//	//デバック用表示
-	//	debugText_->SetPos(50, 90);
-	//	debugText_->Printf(
-	//	  "eye:(%f,%f,%f)", viewProjection_.up.x, viewProjection_.up.y,
-	//	  viewProjection_.up.z);
-	//}
-
-	// FoV変更処理
+	//キャラクター移動処理
 	{
-		//上キーで視野角が広がる
-		if (input_->PushKey(DIK_UP)) {
-			viewProjection_.fovAngleY += 0.01f;
-			// PIを上回らないようにする
-			if (viewProjection_.fovAngleY > PI) {
-				viewProjection_.fovAngleY = PI;
-			}
-			//下キーで視野角が狭まる
-		} else if (input_->PushKey(DIK_DOWN)) {
-			viewProjection_.fovAngleY -= 0.01f;
-			// 0.01fを下回らないようにする
-			if (viewProjection_.fovAngleY < 0.01f) {
-				viewProjection_.fovAngleY = 0.01f;
-			}
+		//キャラクターの移動ベクトル
+		Vector3 move = {0, 0, 0};
+
+		//注移動速さ
+		const float charaSpeed = 0.2f;
+
+		//押した方向で移動ベクトルを変更
+		if (input_->PushKey(DIK_LEFT)) {
+			move = {charaSpeed, 0, 0};
+		} else if (input_->PushKey(DIK_RIGHT)) {
+			move = {-charaSpeed, 0, 0};
 		}
 
-		//行列の再計算
-		viewProjection_.UpdateMatrix();
-
-		//デバック用表示
-		debugText_->SetPos(50,110);
-		debugText_->Printf("fovAngleY(Degree):%f",(180 / PI) * (viewProjection_.fovAngleY));
-
-	}
-
-	//クリップ距離変更処理
-	{
-		//上下キーでニアクリップ距離を増減
-		if (input_->PushKey(DIK_UP)) {
-			viewProjection_.nearZ += 0.0001f;
-		} else if (input_->PushKey(DIK_DOWN)) {
-			viewProjection_.nearZ -= 0.0001f;
-		}
+		// moveの加算
+		worldTransforms_[0].translation_ += move;
 
 		//行列の再計算
-		viewProjection_.UpdateMatrix();
+		worldTransforms_[0].UpdateMatrix();
+
+		//行列の転送
+		worldTransforms_[0].TransferMatrix();
 
 		//デバック用表示
-		debugText_->SetPos(50, 130);
-		debugText_->Printf("nearZ:%f", viewProjection_.nearZ);
-
+		debugText_->SetPos(50, 50);
+		debugText_->Printf(
+		  "worldTransforms_[0].translation_:(%f,%f,%f)", worldTransforms_[0].translation_.x,
+		  worldTransforms_[0].translation_.y, worldTransforms_[0].translation_.z);
 	}
 }
 
@@ -276,10 +139,9 @@ void GameScene::Draw() {
 	/// ここに3Dオブジェクトの描画処理を追加できる
 	/// </summary>
 
-	for (WorldTransform& worldTransform : worldTransforms_) {
-		// 3Dモデル描画
-		model_->Draw(worldTransform, viewProjection_, textureHandle_);
-	}
+	// 3Dモデル描画
+	model_->Draw(worldTransforms_[0], viewProjection_, textureHandle_);
+	model_->Draw(worldTransforms_[1], viewProjection_, textureHandle_);
 
 	// 3Dオブジェクト描画後処理
 	Model::PostDraw();
