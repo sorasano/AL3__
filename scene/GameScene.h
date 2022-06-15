@@ -43,11 +43,36 @@ class GameScene {
 	/// </summary>
 	void Draw();
 
+	//ワールド変換行列
+
+	//拡大縮小
+	Matrix4 Scale(Vector3 Scale);
+
+	//回転X
+	Matrix4 RotX(float roteX);
+	
+	//回転Y
+	Matrix4 RotY(float roteY);
+
+	//回転Z
+	Matrix4 RotZ(float roteZ);
+
+	//回転合成
+	Matrix4 Rot(Matrix4 RotX, Matrix4 RotY, Matrix4 RotZ);
+
+	//平行移動
+	Matrix4 Trans(Vector3 Trans);
+
+	//ワールド変換行列
+	Matrix4 World(Matrix4 Scale, Matrix4 Rot, Matrix4 Trans);
+
   private: // メンバ変数
 	DirectXCommon* dxCommon_ = nullptr;
 	Input* input_ = nullptr;
 	Audio* audio_ = nullptr;
 	DebugText* debugText_ = nullptr;
+
+	float viewAngle = 0.0f;
 
 	//テクスチャハンドル
 	uint32_t textureHandle_ = 0;
@@ -56,7 +81,7 @@ class GameScene {
 	Model* model_ = nullptr;
 
 	//ワールドトランスフォーム
-	WorldTransform worldTransform_;
+	WorldTransform worldTransforms_[100];
 	//ビュープロジェクション
 	ViewProjection viewProjection_;
 
