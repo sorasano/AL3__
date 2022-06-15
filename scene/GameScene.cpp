@@ -1,14 +1,19 @@
 ﻿#include "GameScene.h"
 #include "AxisIndicator.h"
-#include "PrimitiveDrawer.h"
 #include "TextureManager.h"
+#include "math.h"
 #include <cassert>
+
+using namespace DirectX;
+
+#define PI 3.14159265358979323846264338327950288
 
 GameScene::GameScene() {}
 
-GameScene::~GameScene() { delete debugCamera_; }
-
-const double PI = 3.14159;
+GameScene::~GameScene() {
+	delete model_;
+	delete debugCamera_;
+}
 
 void GameScene::Initialize() {
 
@@ -16,255 +21,162 @@ void GameScene::Initialize() {
 	input_ = Input::GetInstance();
 	audio_ = Audio::GetInstance();
 	debugText_ = DebugText::GetInstance();
+	model_ = Model::Create();
 
-	//デバッグカメラ
-	debugCamera_ = new DebugCamera(1280, 780);
+	//ワールドトランスフォームの初期化
+	worldTransform_.Initialize();
+	//ビュープロジェクションの初期化
+	viewProjection_.Initialize();
+	//デバックカメラの生成
+	debugCamera_ = new DebugCamera(500, 500);
 
 	//軸方向表示の表示を有効にする
 	AxisIndicator::GetInstance()->SetVisible(true);
 	//軸方向表示が参照するビュープロジェクションを指定する(アドレス渡し)
 	AxisIndicator::GetInstance()->SetTargetViewProjection(&debugCamera_->GetViewProjection());
 
-	//ライン描画が参照するビュープロジェクションを指定する(アドレス渡し)
-	PrimitiveDrawer::GetInstance()->SetViewProjection(&debugCamera_->GetViewProjection());
+	//--------拡大縮小---------
 
-	//ボックスの初期値
+	// X,Y,Z方向のスケーリングを設定
+	worldTransform_.scale_ = {1.0f, 1.0f, 1.0f};
+	//スケーリング行列を宣言
+	Matrix4 matScale;
 
-	//アフィン変換
+	//スケーリング倍率を行列を設定する
+	matScale = {
+	  worldTransform_.scale_.x,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  worldTransform_.scale_.y,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  worldTransform_.scale_.z,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  1.0f};
 
-	
-	//基準点を原点に移動する用変数
+	//--------回転--------
 
-	//左上の点[0][]の初期値
-	float initialPosX = moveBox[0][0];
-	float initialPosY = moveBox[0][1];
-	float initialPosZ = moveBox[0][2];
+	// X,Y,Z軸回りの回転角を設定
+	worldTransform_.rotation_ = {0.0f, 0.0f,0.0f};
 
-	//原点移動用
-	float startPointMove[4][4]{
-	  {1.0f, 0.0f, 0.0f, -initialPosX},
-	  {0.0f, 1.0f, 0.0f, -initialPosY},
-	  {0.0f, 0.0f, 1.0f, -initialPosZ},
-	  {0.0f, 0.0f, 0.0f, 1.0f        }
-    };
+	// 合成用回転行列を宣言
+	Matrix4 matRot;
+	//　各軸用回転行列を宣言
+	Matrix4 matRotX,matRotY,matRotZ;
 
-	//初期値に戻す用
-	float initialPointMove[4][4]{
-	  {1.0f, 0.0f, 0.0f, initialPosX},
-	  {0.0f, 1.0f, 0.0f, initialPosY},
-	  {0.0f, 0.0f, 1.0f, initialPosY},
-	  {0.0f, 0.0f, 0.0f, 1.0f       }
-    };
+	// Z軸回転行列の各要素を設定する
 
-	//----------平行移動-----------\\
+	matRotZ = {
+	  cos(worldTransform_.rotation_.z),
+	  sin(worldTransform_.rotation_.z),
+	  0.0f,
+	  0.0f,
+	  -sin(worldTransform_.rotation_.z),
+	  cos(worldTransform_.rotation_.z),
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  1.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  1.0f};
 
-	float move[4][4]{
-	  {1.0f, 0.0f, 0.0f, 5.0f},
-	  {0.0f, 1.0f, 0.0f, 5.0f},
-	  {0.0f, 0.0f, 1.0f, 5.0f},
-	  {0.0f, 0.0f, 0.0f, 1.0f}
-    };
+	//X軸回転行列の各要素を設定する
+	matRotX = {
+	  1.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  cos(worldTransform_.rotation_.x),
+	  sin(worldTransform_.rotation_.x),
+	  0.0f,
+	  0.0f,
+	  -sin(worldTransform_.rotation_.x),
+	  cos(worldTransform_.rotation_.x),
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  1.0f};
 
-	//-----------回転-----------\\
+	// Y軸回転行列の各要素を設定する
 
-	float rotate[4][4]{
-	  {cos(PI / 4), -sin(PI / 4), 0.0f, 0.0f},
-	  {sin(PI / 4), cos(PI / 4),  0.0f, 0.0f},
-	  {0.0f,        0.0f,         1.0f, 0.0f},
-	  {0.0f,        0.0f,         0.0f, 1.0f}
-    };
+	matRotY = {
+	  cos(worldTransform_.rotation_.y),
+	  0.0f,
+	  -sin(worldTransform_.rotation_.y),
+	  0.0f,
+	  0.0f,
+	  1.0f,
+	  0.0f,
+	  0.0f,
+	  sin(worldTransform_.rotation_.y),
+	  0.0f,
+	  cos(worldTransform_.rotation_.y),
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  1.0f};
 
-	//------------拡大縮小------------\\
+	//各軸の回転行列を合成
+	matRot = (matRotZ *= matRotX *= matRotY);
 
-	float scare[4][4]{
-	  {2.0f, 0.0f, 0.0f, 0.0f},
-	  {0.0f, 2.0f, 0.0f, 0.0f},
-	  {0.0f, 0.0f, 2.0f, 0.0f},
-	  {0.0f, 0.0f, 0.0f, 1.0f}
-    };
+	//-------平行移動----------
 
-	//------------平行移動-----------\\
-}
+	// X,Y,Z方向のスケーリングを設定
+	worldTransform_.translation_ = {0.0f, 0.0f, 0.0f};
+	//スケーリング行列を宣言
+	Matrix4 matTrans = MathUtility::Matrix4Identity();
 
-	for (int i = 0; i < 8; i++) {
+	//スケーリング倍率を行列を設定する
+	matTrans = {
+	 1.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  1.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  0.0f,
+	  1.0f,
+	  0.0f,
+	  worldTransform_.translation_.x,
+	  worldTransform_.translation_.y,
+	  worldTransform_.translation_.z,
+	  1.0f};
 
-		// moveBoxと同じ値を他の変数に代入
-		for (int j = 0; j < 4; j++) {
-			moveInitialBox[i][j] = moveBox[i][j];
-		}
+	//行列の合成
 
-		moveBox[i][0] = move[0][0] * moveInitialBox[i][0] + move[0][1] * moveInitialBox[i][1] +
-		                move[0][2] * moveInitialBox[i][2] + move[0][3] * moveInitialBox[i][3];
+	//単位行列を代入する
+	worldTransform_.matWorld_ = {1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+	                             0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.f,  0.0f, 1.0f};
 
-		moveBox[i][1] = move[1][0] * moveInitialBox[i][0] + move[1][1] * moveInitialBox[i][1] +
-		                move[1][2] * moveInitialBox[i][2] + move[1][3] * moveInitialBox[i][3];
+	//掛け算して代入する
+	worldTransform_.matWorld_ *= matScale *= matRot *= matTrans;
 
-		moveBox[i][2] = move[2][0] * moveInitialBox[i][0] + move[2][1] * moveInitialBox[i][1] +
-		                move[2][2] * moveInitialBox[i][2] + move[2][3] * moveInitialBox[i][3];
+	//行列の転送
+	worldTransform_.TransferMatrix();
 
-		moveBox[i][3] = move[3][0] * moveInitialBox[i][0] + move[3][1] * moveInitialBox[i][1] +
-		                move[3][2] * moveInitialBox[i][2] + move[3][3] * moveInitialBox[i][3];
-
-	}
-
-	//------------回転-----------\\
-
-
-	for (int i = 0; i < 8; i++) {
-
-		// rotateBoxと同じ値を他の変数に代入
-		for (int j = 0; j < 4; j++) {
-			rotateInitialBox[i][j] = rotateBox[i][j];
-		}
-
-		//// 1 基準点を原点に移動
-
-		//rotateBox[i][0] = startPointMove[0][0] * rotateInitialBox[i][0] +
-		//                  startPointMove[0][1] * rotateInitialBox[i][1] +
-		//                  startPointMove[0][2] * rotateInitialBox[i][2] +
-		//                  startPointMove[0][3] * rotateInitialBox[i][3];
-
-		//rotateBox[i][1] = startPointMove[1][0] * rotateInitialBox[i][0] +
-		//                  startPointMove[1][1] * rotateInitialBox[i][1] +
-		//                  startPointMove[1][2] * rotateInitialBox[i][2] +
-		//                  startPointMove[1][3] * rotateInitialBox[i][3];
-
-		//rotateBox[i][2] = startPointMove[2][0] * rotateInitialBox[i][0] +
-		//                  startPointMove[2][1] * rotateInitialBox[i][1] +
-		//                  startPointMove[2][2] * rotateInitialBox[i][2] +
-		//                  startPointMove[2][3] * rotateInitialBox[i][3];
-
-		//rotateBox[i][3] = startPointMove[3][0] * rotateInitialBox[i][0] +
-		//                  startPointMove[3][1] * rotateInitialBox[i][1] +
-		//                  startPointMove[3][2] * rotateInitialBox[i][2] +
-		//                  startPointMove[3][3] * rotateInitialBox[i][3];
-
-		// 2 回転
-
-		rotateBox[i][0] =
-		  rotate[0][0] * rotateInitialBox[i][0] + rotate[0][1] * rotateInitialBox[i][1] +
-		  rotate[0][2] * rotateInitialBox[i][2] + rotate[0][3] * rotateInitialBox[i][3];
-
-		rotateBox[i][1] =
-		  rotate[1][0] * rotateInitialBox[i][0] + rotate[1][1] * rotateInitialBox[i][1] +
-		  rotate[1][2] * rotateInitialBox[i][2] + rotate[1][3] * rotateInitialBox[i][3];
-
-		rotateBox[i][2] =
-		  rotate[2][0] * rotateInitialBox[i][0] + rotate[2][1] * rotateInitialBox[i][1] +
-		  rotate[2][2] * rotateInitialBox[i][2] + rotate[2][3] * rotateInitialBox[i][3];
-
-		rotateBox[i][3] =
-		  rotate[3][0] * rotateInitialBox[i][0] + rotate[3][1] * rotateInitialBox[i][1] +
-		  rotate[3][2] * rotateInitialBox[i][2] + rotate[3][3] * rotateInitialBox[i][3];
-
-		//// 3 元の位置に戻す
-
-		//rotateBox[i][0] = initialPointMove[0][0] * rotateInitialBox[i][0] +
-		//                  initialPointMove[0][1] * rotateInitialBox[i][1] +
-		//                  initialPointMove[0][2] * rotateInitialBox[i][2] +
-		//                  initialPointMove[0][3] * rotateInitialBox[i][3];
-
-		//rotateBox[i][1] = initialPointMove[1][0] * rotateInitialBox[i][0] +
-		//                  initialPointMove[1][1] * rotateInitialBox[i][1] +
-		//                  initialPointMove[1][2] * rotateInitialBox[i][2] +
-		//                  initialPointMove[1][3] * rotateInitialBox[i][3];
-
-		//rotateBox[i][2] = initialPointMove[2][0] * rotateInitialBox[i][0] +
-		//                  initialPointMove[2][1] * rotateInitialBox[i][1] +
-		//                  initialPointMove[2][2] * rotateInitialBox[i][2] +
-		//                  initialPointMove[2][3] * rotateInitialBox[i][3];
-
-		//rotateBox[i][3] = initialPointMove[3][0] * rotateInitialBox[i][0] +
-		//                  initialPointMove[3][1] * rotateInitialBox[i][1] +
-		//                  initialPointMove[3][2] * rotateInitialBox[i][2] +
-		//                  initialPointMove[3][3] * rotateInitialBox[i][3];
-	}
-
-	//-------------拡大-------------\\
-
-	for (int i = 0; i < 8; i++) {
-
-		//  scareBoxと同じ値を他の変数に代入
-		for (int j = 0; j < 4; j++) {
-			scareInitialBox[i][j] = scareBox[i][j];
-		}
-
-		//// 1 基準点を原点に移動
-
-		//scareBox[i][0] = startPointMove[0][0] * scareInitialBox[i][0] +
-		//                     startPointMove[0][1] * scareInitialBox[i][1] +
-		//                     startPointMove[0][2] * scareInitialBox[i][2] +
-		//                     startPointMove[0][3] * scareInitialBox[i][3];
-
-		//scareBox[i][1] = startPointMove[1][0] * scareInitialBox[i][0] +
-		//                     startPointMove[1][1] * scareInitialBox[i][1] +
-		//                     startPointMove[1][2] * scareInitialBox[i][2] +
-		//                     startPointMove[1][3] * scareInitialBox[i][3];
-
-		//scareBox[i][2] = startPointMove[2][0] * scareInitialBox[i][0] +
-		//                     startPointMove[2][1] * scareInitialBox[i][1] +
-		//                     startPointMove[2][2] * scareInitialBox[i][2] +
-		//                     startPointMove[2][3] * scareInitialBox[i][3];
-
-		//scareBox[i][3] = startPointMove[3][0] * scareInitialBox[i][0] +
-		//                     startPointMove[3][1] * scareInitialBox[i][1] +
-		//                     startPointMove[3][2] * scareInitialBox[i][2] +
-		//                     startPointMove[3][3] * scareInitialBox[i][3];
-
-		// 2 拡大縮小
-
-		scareBox[i][0] = scare[0][0] * scareInitialBox[i][0] +
-		                     scare[0][1] * scareInitialBox[i][1] +
-		                     scare[0][2] * scareInitialBox[i][2] +
-		                     scare[0][3] * scareInitialBox[i][3];
-
-		scareBox[i][1] = scare[1][0] * scareInitialBox[i][0] +
-		                     scare[1][1] * scareInitialBox[i][1] +
-		                     scare[1][2] * scareInitialBox[i][2] +
-		                     scare[1][3] * scareInitialBox[i][3];
-
-		scareBox[i][2] = scare[2][0] * scareInitialBox[i][0] +
-		                     scare[2][1] * scareInitialBox[i][1] +
-		                     scare[2][2] * scareInitialBox[i][2] +
-		                     scare[2][3] * scareInitialBox[i][3];
-
-		scareBox[i][3] = scare[3][0] * scareInitialBox[i][0] +
-		                     scare[3][1] * scareInitialBox[i][1] +
-		                     scare[3][2] * scareInitialBox[i][2] +
-		                     scare[3][3] * scareInitialBox[i][3];
-
-		////	//3 元の位置に戻す
-
-		//scareBox[i][0] = initialPointMove[0][0] * scareInitialBox[i][0] +
-		//                     initialPointMove[0][1] * scareInitialBox[i][1] +
-		//                     initialPointMove[0][2] * scareInitialBox[i][2] +
-		//                     initialPointMove[0][3] * scareInitialBox[i][3];
-
-		//scareBox[i][1] = initialPointMove[1][0] * scareInitialBox[i][0] +
-		//                     initialPointMove[1][1] * scareInitialBox[i][1] +
-		//                     initialPointMove[1][2] * scareInitialBox[i][2] +
-		//                     initialPointMove[1][3] * scareInitialBox[i][3];
-
-		//scareBox[i][2] = initialPointMove[2][0] * scareInitialBox[i][0] +
-		//                     initialPointMove[2][1] * scareInitialBox[i][1] +
-		//                     initialPointMove[2][2] * scareInitialBox[i][2] +
-		//                     initialPointMove[2][3] * scareInitialBox[i][3];
-
-		//scareBox[i][3] = initialPointMove[3][0] * scareInitialBox[i][0] +
-		//                     initialPointMove[3][1] * scareInitialBox[i][1] +
-		//                     initialPointMove[3][2] * scareInitialBox[i][2] +
-		//                     initialPointMove[3][3] * scareInitialBox[i][3];
-	}
 }
 
 void GameScene::Update() {
 
 	//デバックカメラの更新
 	debugCamera_->Update();
-
-	 debugText_->Printf(
-	   "box:(%f,%f,%f)", moveBox[1][0], moveBox[1][1], moveBox[1][2]);
-
 }
 
 void GameScene::Draw() {
@@ -290,51 +202,17 @@ void GameScene::Draw() {
 	// 3Dオブジェクト描画前処理
 	Model::PreDraw(commandList);
 
+	//ファイル名を指定してテクスチャを読み込む
+	textureHandle_ = TextureManager::Load("mario.jpg");
+
 	/// <summary>
 	/// ここに3Dオブジェクトの描画処理を追加できる
 	/// </summary>
 
+	// 3Dモデル描画
+	model_->Draw(worldTransform_, debugCamera_->GetViewProjection(), textureHandle_);
+
 	// 3Dオブジェクト描画後処理
-
-	//ライン描画が参照するビュープロジェクションを指定する(アドレス渡し)
-
-	for (int i = 0; i < 12; i++) {
-		PrimitiveDrawer::GetInstance()->DrawLine3d(
-		  vertex[edgeList[i][0]], vertex[edgeList[i][1]], Vector4(1, 1, 1, 1));
-	}
-
-	//平行移動
-	for (int i = 0; i < 12; i++) {
-		PrimitiveDrawer::GetInstance()->DrawLine3d(
-		  Vector3(
-		    moveBox[edgeList[i][0]][0], moveBox[edgeList[i][0]][1], moveBox[edgeList[i][0]][2]),
-		  Vector3(
-		    moveBox[edgeList[i][1]][0], moveBox[edgeList[i][1]][1], moveBox[edgeList[i][1]][2]),
-		  Vector4(255, 0, 0, 1));
-	}
-
-	//回転
-	for (int i = 0; i < 12; i++) {
-		PrimitiveDrawer::GetInstance()->DrawLine3d(
-		  Vector3(
-		    rotateBox[edgeList[i][0]][0], rotateBox[edgeList[i][0]][1],
-		    rotateBox[edgeList[i][0]][2]),
-		  Vector3(
-		    rotateBox[edgeList[i][1]][0], rotateBox[edgeList[i][1]][1],
-		    rotateBox[edgeList[i][1]][2]),
-		  Vector4(0, 255, 0, 1));
-	}
-
-	//拡大縮小
-	for (int i = 0; i < 12; i++) {
-		PrimitiveDrawer::GetInstance()->DrawLine3d(
-		  Vector3(
-		    scareBox[edgeList[i][0]][0], scareBox[edgeList[i][0]][1], scareBox[edgeList[i][0]][2]),
-		  Vector3(
-		    scareBox[edgeList[i][1]][0], scareBox[edgeList[i][1]][1], scareBox[edgeList[i][1]][2]),
-		  Vector4(0, 0, 255, 1));
-	}
-	
 	Model::PostDraw();
 #pragma endregion
 
