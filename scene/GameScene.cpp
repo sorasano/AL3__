@@ -76,30 +76,6 @@ void GameScene::Initialize() {
 	worldTransforms_[PartId::KLegR].Initialize();
 	worldTransforms_[PartId::KLegR].parent_ = &worldTransforms_[PartId::KHip];
 	worldTransforms_[PartId::KLegR].translation_ = { 4.5f, -4.5f, 0 };
-	//	//行列の転送
-	//	worldTransform.TransferMatrix();
-	//}
-
-	////	カメラ視点座標を設定
-	// viewProjection_.eye = {0,0,-10};
-
-	////カメラ注視点座標を設定
-	// viewProjection_.target = {10,0,0};
-
-	////カメラ上方向ベクトルを設定(右上45度指定)
-	// viewProjection_.up = {cosf(PI / 4.0f), sinf(PI / 4.0f),0.0f};
-
-	////カメラ垂直方向視野角を設定
-	// viewProjection_.fovAngleY = (PI / 180) * (10.0f);
-
-	////アスペクト比を設定
-	// viewProjection_.aspectRatio = 1.0f;
-
-	////ニアクリップを設定
-	// viewProjection_.nearZ = -1.0f;
-
-	////ファークリップ距離を設定
-	// viewProjection_.farZ = 53.0f;
 
 	//ビュープロジェクションの初期化
 	viewProjection_.Initialize();
