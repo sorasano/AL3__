@@ -63,6 +63,9 @@ private: // メンバ変数
 	//デバックカメラ
 	DebugCamera* debugCamera_ = nullptr;
 
+	//デバックカメラ有効
+	bool isDebugCameraActive_ = false;
+
 	//自キャラ
 	Player* player_ = nullptr;
 

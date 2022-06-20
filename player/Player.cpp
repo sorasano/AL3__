@@ -1,5 +1,6 @@
 #include "Player.h"
 #include "Affine.h"
+#include "PlayerBullet.h"
 
 //初期化
 void Player::Initialize(Model* model, uint32_t textureHandle) {
@@ -18,7 +19,7 @@ void Player::Initialize(Model* model, uint32_t textureHandle) {
 	//ワールド変換初期化
 	worldtransform_.Initialize();
 
-	//自キャラの生成
+	//アフィン行列
 	affine_ = new Affine();
 
 };
@@ -68,6 +69,14 @@ void Player::Update() {
 	debugText_->SetPos(0, 0);
 	debugText_->Printf("PlayerPos(%f,%f,%f)", worldtransform_.translation_.x, worldtransform_.translation_.y, worldtransform_.translation_.z);
 
+	Rotate();
+	//キャラクター攻撃処理
+	Attack();
+
+	//弾更新
+	if (bullet_) {
+		bullet_->Update();
+	}
 };
 
 //描画
@@ -76,4 +85,56 @@ void Player::Draw(ViewProjection& viewProjection_) {
 	//3Dモデルを描画
 	model_->Draw(worldtransform_, viewProjection_, textureHandle_);
 
+	//弾描画
+	if (bullet_) {
+		bullet_->Draw(viewProjection_);
+	}
+
 };
+
+void Player::Rotate() {
+
+
+	//キャラクターの移動ベクトル
+	Vector3 rot = { 0.0f,0.0f,0.0f };
+
+	//キャラクターの移動速さ
+	const float rotY = 0.01f;
+
+	//移動ベクトルの変更
+	if (input_->PushKey(DIK_R)) {
+		rot = { 0.0f,rotY,0.0f };
+	}
+	else if (input_->PushKey(DIK_T)) {
+		rot = {0.0f,-rotY,0.0f };
+	}
+
+	//ベクトルの加算
+
+	worldtransform_.rotation_.x += rot.x;
+	worldtransform_.rotation_.y += rot.y;
+	worldtransform_.rotation_.z += rot.z;
+
+	//行列更新
+	worldtransform_.matWorld_ = affine_->World(affine_->Scale(affine_->Scale_), affine_->Rot(affine_->RotX(worldtransform_.rotation_.x), affine_->RotY(worldtransform_.rotation_.y), affine_->RotZ(worldtransform_.rotation_.z)), affine_->Trans(worldtransform_.translation_));
+	worldtransform_.TransferMatrix();
+
+	debugText_->SetPos(0, 20);
+	debugText_->Printf("PlayerRot(%f,%f,%f)", worldtransform_.rotation_.x, worldtransform_.rotation_.y, worldtransform_.rotation_.z);
+
+
+};
+
+void Player::Attack() {
+
+	if (input_->PushKey(DIK_SPACE)) {
+
+		//弾を生成し初期化
+		PlayerBullet* newBullet = new PlayerBullet();
+		newBullet->Initialize(model_,worldtransform_.translation_);
+	
+		//弾を登録する
+		bullet_ = newBullet;
+	}
+
+}
