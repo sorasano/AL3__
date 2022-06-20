@@ -6,7 +6,7 @@
 #include "DebugText.h"
 #include "Input.h"
 #include "Affine.h"
-
+#include "PlayerBullet.h"
 
 class Player {
 
@@ -20,6 +20,12 @@ public:
 	//描画
 	void Draw(ViewProjection& viewProjection_);
 
+	//旋回
+	void Rotate();
+
+	//攻撃
+	void Attack();
+
 private:
 	//ワールド変換データ
 	WorldTransform worldtransform_;
@@ -31,5 +37,10 @@ private:
 	Input* input_ = nullptr;
 	DebugText* debugText_ = nullptr;
 
+	//アフィン行列
 	Affine* affine_;
+
+private:
+	//弾
+	PlayerBullet* bullet_ = nullptr;
 };
