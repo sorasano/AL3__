@@ -7,6 +7,8 @@
 #include "Input.h"
 #include "Affine.h"
 #include "PlayerBullet.h"
+#include <memory>
+#include <list>
 
 class Player {
 
@@ -42,5 +44,5 @@ private:
 
 private:
 	//’e
-	PlayerBullet* bullet_ = nullptr;
+	std::list<std::unique_ptr<PlayerBullet>> bullets_;
 };
