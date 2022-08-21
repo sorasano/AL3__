@@ -12,6 +12,7 @@ GameScene::~GameScene() {
 	delete model_;
 	delete debugCamera_;
 	delete player_;
+	delete enemy_;
 }
 
 void GameScene::Initialize() {
@@ -30,6 +31,9 @@ void GameScene::Initialize() {
 	player_ = new Player();
 	//自キャラの初期化
 	player_->Initialize(model_, textureHandle_);
+
+	enemy_ = new Enemy();
+	enemy_->Initialize(model_,Vector3(0,1,10));
 
 	//ビュープロジェクションの初期化
 	viewProjection_.Initialize();
@@ -50,6 +54,9 @@ void GameScene::Update() {
 
 	//自キャラの更新
 	player_->Update();
+
+	//敵キャラの更新
+	enemy_->Update();
 }
 
 void GameScene::Draw() {
@@ -81,6 +88,9 @@ void GameScene::Draw() {
 
 	//自キャラの更新
 	player_->Draw(viewProjection_);
+
+	//敵キャラの描画
+	enemy_->Draw(viewProjection_);
 
 	////3Dモデル描画
 	//model_->Draw(worldTransform_, debugCamera_->GetViewProjection(), textureHandle_);
