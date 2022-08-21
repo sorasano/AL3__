@@ -1,6 +1,7 @@
 #include "Player.h"
 #include "Affine.h"
 #include "PlayerBullet.h"
+#include "Matrix4.h"
 
 //初期化
 void Player::Initialize(Model* model, uint32_t textureHandle) {
@@ -26,6 +27,11 @@ void Player::Initialize(Model* model, uint32_t textureHandle) {
 
 //更新
 void Player::Update() {
+
+	//ですフラグの立った球を削除
+	bullets_.remove_if([](std::unique_ptr<PlayerBullet>&bullet) {
+		return bullet->IsDead();
+	});
 
 	//キャラクターの移動ベクトル
 	Vector3 move = { 0.0f,0.0f,0.0f };
@@ -57,14 +63,14 @@ void Player::Update() {
 	worldtransform_.translation_.y += move.y;
 	worldtransform_.translation_.z += move.z;
 
-	worldtransform_.translation_.x = max(worldtransform_.translation_.x,-kMoveLimitX);
+	worldtransform_.translation_.x = max(worldtransform_.translation_.x, -kMoveLimitX);
 	worldtransform_.translation_.x = min(worldtransform_.translation_.x, kMoveLimitX);
 	worldtransform_.translation_.y = max(worldtransform_.translation_.y, -kMoveLimitY);
 	worldtransform_.translation_.y = min(worldtransform_.translation_.y, kMoveLimitY);
 
 	//行列更新
 	worldtransform_.matWorld_ = affine_->World(affine_->Scale(affine_->Scale_), affine_->Rot(affine_->RotX(affine_->Rot_.x), affine_->RotY(affine_->Rot_.y), affine_->RotZ(affine_->Rot_.z)), affine_->Trans(worldtransform_.translation_));
-	worldtransform_.TransferMatrix();
+	//worldtransform_.TransferMatrix();
 
 	debugText_->SetPos(0, 0);
 	debugText_->Printf("PlayerPos(%f,%f,%f)", worldtransform_.translation_.x, worldtransform_.translation_.y, worldtransform_.translation_.z);
@@ -74,7 +80,7 @@ void Player::Update() {
 	Attack();
 
 	//弾更新
-	for (std::unique_ptr<PlayerBullet>& bullet: bullets_) {
+	for (std::unique_ptr<PlayerBullet>& bullet : bullets_) {
 		bullet->Update();
 	}
 };
@@ -86,7 +92,7 @@ void Player::Draw(ViewProjection& viewProjection_) {
 	model_->Draw(worldtransform_, viewProjection_, textureHandle_);
 
 	//弾描画
-	for (std::unique_ptr<PlayerBullet>&bullet : bullets_) {
+	for (std::unique_ptr<PlayerBullet>& bullet : bullets_) {
 		bullet->Draw(viewProjection_);
 	}
 
@@ -106,7 +112,7 @@ void Player::Rotate() {
 		rot = { 0.0f,rotY,0.0f };
 	}
 	else if (input_->PushKey(DIK_T)) {
-		rot = {0.0f,-rotY,0.0f };
+		rot = { 0.0f,-rotY,0.0f };
 	}
 
 	//ベクトルの加算
@@ -129,10 +135,17 @@ void Player::Attack() {
 
 	if (input_->TriggerKey(DIK_SPACE)) {
 
+		//弾の速度
+		const float kBulletSpeed = 1.0f;
+		Vector3 velocity(0, 0, kBulletSpeed);
+
+		//速度ベクトルを自機の向きに合わせて回転させる
+		velocity = transform(velocity, worldtransform_.matWorld_);
+
 		//弾を生成し初期化
 		std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
-		newBullet->Initialize(model_,worldtransform_.translation_);
-	
+		newBullet->Initialize(model_, worldtransform_.translation_,velocity);
+
 		//弾を登録する
 		bullets_.push_back(std::move(newBullet));
 	}
