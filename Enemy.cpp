@@ -22,9 +22,25 @@ void Enemy::Initialize(Model* model, const Vector3& position) {
 
 void Enemy::Update() {
 
-	Vector3 velocity(0, 0, 0.1);
-	//座標を移動させる
-	worldtransform_.translation_ -= velocity;
+	Vector3 approachVelocity(0, 0, -0.1);
+	Vector3 leaveVelocity(0.1, 0.1, -0.1);
+
+	switch (phase_) {
+	case Phase::Approach:
+	default:
+		//移動
+		worldtransform_.translation_ += approachVelocity;
+		//既定の位置に到達したら離脱
+		if (worldtransform_.translation_.z < -10.0f) {
+			phase_ = Phase::Leave;
+		}
+		break;
+	case Phase::Leave:
+		//移動
+		worldtransform_.translation_ += leaveVelocity;
+		break;
+	}
+
 
 	//行列更新
 	worldtransform_.matWorld_ = affine_->World(affine_->Scale(affine_->Scale_), affine_->Rot(affine_->RotX(affine_->Rot_.x), affine_->RotY(affine_->Rot_.y), affine_->RotZ(affine_->Rot_.z)), affine_->Trans(worldtransform_.translation_));

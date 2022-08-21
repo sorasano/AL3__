@@ -22,5 +22,12 @@ private:
 	//アフィン行列
 	Affine* affine_ = nullptr;
 
+	//行動フェーズ
+	enum class Phase {
+		Approach,//接近する
+		Leave,   //離脱する
+	};
+
+	Phase phase_ = Phase::Approach;
 };
 
