@@ -87,8 +87,10 @@ Matrix4 Affine::Trans(Vector3 Trans) {
 	Matrix4 matTrans = MathUtility::Matrix4Identity();
 
 	//スケーリング倍率を行列を設定する
-	matTrans = { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,    1.0f,    0.0f,    0.0f,
-				0.0f, 0.0f, 1.0f, 0.0f, Trans.x, Trans.y, Trans.z, 1.0f };
+	matTrans = { 1.0f, 0.0f, 0.0f, 0.0f, 
+				0.0f,  1.0f,    0.0f, 0.0f,
+				0.0f, 0.0f, 1.0f, 0.0f,
+				Trans.x, Trans.y, Trans.z, 1.0f };
 
 	return matTrans;
 };

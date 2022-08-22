@@ -35,6 +35,8 @@ void GameScene::Initialize() {
 	enemy_ = new Enemy();
 	enemy_->Initialize(model_,Vector3(10,1,10));
 
+	enemy_->SetPlayer(player_);
+
 	//ビュープロジェクションの初期化
 	viewProjection_.Initialize();
 	//デバックカメラの生成

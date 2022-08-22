@@ -82,12 +82,22 @@ void Enemy::Draw(const ViewProjection& viewProjection) {
 
 void Enemy::Fire() {
 
+	assert(player_);
+
 		//弾の速度
 		const float kBulletSpeed = 1.0f;
-		Vector3 velocity(0, 0, kBulletSpeed);
+		//Vector3 velocity(0, 0, kBulletSpeed);
 
-		////速度ベクトルを自機の向きに合わせて回転させる
-		//velocity = transform(velocity, worldtransform_.matWorld_);
+		//自キャラのワールド座標を取得
+		Vector3 playerWorldPos = player_->GetWorldPosition();
+		//敵キャラのワールド座標を取得
+		Vector3 enemyWorldPos = GetWorldPosition();
+		//敵キャラ→自キャラの差分ベクトルを求める
+		Vector3 velocity = velocity.sub(enemyWorldPos, playerWorldPos);
+		//ベクトルの正規化
+		velocity.normalize();
+		////ベクトルの長さを速さに合わせる
+		//velocity *= kBulletSpeed;
 
 		//弾を生成し初期化
 		std::unique_ptr<EnemyBullet> newBullet = std::make_unique<EnemyBullet>();
@@ -101,4 +111,15 @@ void Enemy::Fire() {
 void Enemy::InitializeApproach() {
 	//発射タイマーを初期化
 	fireTimer = kFireInterval;
+}
+
+Vector3 Enemy::GetWorldPosition() {
+	//ワールド座標を入れる変数
+	Vector3 worldPos;
+	//ワールド行列の平行移動成分を取得
+	worldPos.x = worldtransform_.matWorld_.m[3][0];
+	worldPos.y = worldtransform_.matWorld_.m[3][1];
+	worldPos.z = worldtransform_.matWorld_.m[3][2];
+
+	return worldPos;
 }

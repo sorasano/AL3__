@@ -12,6 +12,8 @@
 #include <list>
 #include "Matrix4.h"
 
+class Player;
+
 class Enemy
 {
 public:
@@ -26,6 +28,11 @@ public:
 	//接近フェーズ初期化
 	void InitializeApproach();
 
+	void SetPlayer(Player* player) { player_ = player; }
+
+	//ワールド座標を取得
+	Vector3 GetWorldPosition();
+
 private:
 	//ワールド変換データ
 	WorldTransform worldtransform_;
@@ -37,6 +44,9 @@ private:
 	Affine* affine_ = nullptr;
 
 	Input* input_ = nullptr;
+
+	//自キャラ
+	Player* player_ = nullptr;
 
 	//行動フェーズ
 	enum class Phase {
