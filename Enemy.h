@@ -3,6 +3,14 @@
 #include "Model.h"
 #include "WorldTransform.h"
 #include "Affine.h"
+#include "EnemyBullet.h"
+
+#include "WinApp.h"
+#include "DebugText.h"
+#include "Input.h"
+#include <memory>
+#include <list>
+#include "Matrix4.h"
 
 class Enemy
 {
@@ -12,6 +20,12 @@ public:
 	void Update();
 
 	void Draw(const ViewProjection& viewProjection);
+
+	void Fire();
+
+	//接近フェーズ初期化
+	void InitializeApproach();
+
 private:
 	//ワールド変換データ
 	WorldTransform worldtransform_;
@@ -22,6 +36,8 @@ private:
 	//アフィン行列
 	Affine* affine_ = nullptr;
 
+	Input* input_ = nullptr;
+
 	//行動フェーズ
 	enum class Phase {
 		Approach,//接近する
@@ -29,5 +45,17 @@ private:
 	};
 
 	Phase phase_ = Phase::Approach;
+
+private:
+	//弾
+	std::list<std::unique_ptr<EnemyBullet>> bullets_;
+
+public:
+	//発射間隔
+	static const int kFireInterval = 60;
+
+private:
+	//発射タイマー
+	int32_t fireTimer = 0;
 };
 

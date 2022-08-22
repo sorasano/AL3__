@@ -33,7 +33,7 @@ void GameScene::Initialize() {
 	player_->Initialize(model_, textureHandle_);
 
 	enemy_ = new Enemy();
-	enemy_->Initialize(model_,Vector3(0,1,10));
+	enemy_->Initialize(model_,Vector3(10,1,10));
 
 	//ビュープロジェクションの初期化
 	viewProjection_.Initialize();
