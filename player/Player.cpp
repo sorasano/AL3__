@@ -28,7 +28,7 @@ void Player::Initialize(Model* model, uint32_t textureHandle) {
 //更新
 void Player::Update() {
 
-	//ですフラグの立った球を削除
+	//デスフラグの立った球を削除
 	bullets_.remove_if([](std::unique_ptr<PlayerBullet>&bullet) {
 		return bullet->IsDead();
 	});
@@ -140,7 +140,7 @@ void Player::Attack() {
 		Vector3 velocity(0, 0, kBulletSpeed);
 
 		//速度ベクトルを自機の向きに合わせて回転させる
-		velocity = transform(velocity, worldtransform_.matWorld_);
+		velocity = transform(velocity, affine_->Rot(affine_->RotX(worldtransform_.rotation_.x), affine_->RotY(worldtransform_.rotation_.y), affine_->RotZ(worldtransform_.rotation_.z)));
 
 		//弾を生成し初期化
 		std::unique_ptr<PlayerBullet> newBullet = std::make_unique<PlayerBullet>();
@@ -161,4 +161,8 @@ Vector3 Player::GetWorldPosition() {
 	worldPos.z = worldtransform_.matWorld_.m[3][2];
 
 	return worldPos;
+}
+
+void Player::OnCollision() {
+
 }

@@ -27,6 +27,11 @@ void Enemy::Initialize(Model* model, const Vector3& position) {
 
 void Enemy::Update() {
 
+	//デスフラグの立った球を削除
+	bullets_.remove_if([](std::unique_ptr<EnemyBullet>& bullet) {
+		return bullet->IsDead();
+		});
+
 	Vector3 approachVelocity(0, 0, -0.01);
 	Vector3 leaveVelocity(0.1, 0.1, -0.1);
 
@@ -122,4 +127,8 @@ Vector3 Enemy::GetWorldPosition() {
 	worldPos.z = worldtransform_.matWorld_.m[3][2];
 
 	return worldPos;
+}
+
+void Enemy::OnCollision() {
+
 }
