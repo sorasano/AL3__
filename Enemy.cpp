@@ -12,6 +12,7 @@ void Enemy::Initialize(Model* model, const Vector3& position) {
 
 	//シングルトンインスタンスを取得する
 	input_ = Input::GetInstance();
+	debugText_ = DebugText::GetInstance();
 
 	//ワールド変換初期化
 	worldtransform_.Initialize();
@@ -27,49 +28,100 @@ void Enemy::Initialize(Model* model, const Vector3& position) {
 
 void Enemy::Update() {
 
-	//デスフラグの立った球を削除
-	bullets_.remove_if([](std::unique_ptr<EnemyBullet>& bullet) {
-		return bullet->IsDead();
-		});
+	if (life <= 0) {
+		worldtransform_.translation_ = Vector3(100,100,100);
+		//行列更新
+		worldtransform_.matWorld_ = affine_->World(affine_->Scale(affine_->Scale_), affine_->Rot(affine_->RotX(affine_->Rot_.x), affine_->RotY(affine_->Rot_.y), affine_->RotZ(affine_->Rot_.z)), affine_->Trans(worldtransform_.translation_));
+		worldtransform_.TransferMatrix();
 
-	Vector3 approachVelocity(0, 0, -0.01);
-	Vector3 leaveVelocity(0.1, 0.1, -0.1);
+		debugText_->SetPos(400,100);
+		debugText_->Printf("clear");
+	}
+	else {
 
-	switch (phase_) {
-	case Phase::Approach:
-	default:
-		//移動
-		worldtransform_.translation_ += approachVelocity;
-		//既定の位置に到達したら離脱
-		//if (worldtransform_.translation_.z < -10.0f) {
-		//	phase_ = Phase::Leave;
-		//}
+		//デスフラグの立った球を削除
+		bullets_.remove_if([](std::unique_ptr<EnemyBullet>& bullet) {
+			return bullet->IsDead();
+			});
 
-		//発射タイマーカウントダウン
-		fireTimer--;
-		if (fireTimer <= 0) {
-			//弾を発射
-			Fire();
-			//発射タイマーを初期化
-			fireTimer = kFireInterval;
+		Vector3 approachVelocity(0, 0, -0.1);
+		Vector3 leaveVelocity(0.1, 0.1, -0.1);
+		Vector3 usuallyVelocity(0.1, 0, 0);
+
+		switch (phase_) {
+		case Phase::Approach:
+		default:
+			//移動
+			worldtransform_.translation_ += approachVelocity;
+			//既定の位置に到達したら離脱
+			//if (worldtransform_.translation_.z < -10.0f) {
+			//	phase_ = Phase::Leave;
+			//}
+
+			//発射タイマーカウントダウン
+			fireTimer--;
+			if (fireTimer <= 0) {
+				//弾を発射
+				TargetFire();
+				//発射タイマーを初期化
+				fireTimer = kFireInterval;
+			}
+			break;
+		case Phase::Leave:
+			//移動
+			worldtransform_.translation_ += leaveVelocity;
+			break;
+		case Phase::usually:
+
+			if (worldtransform_.translation_.x <= 20 && usually == 0) {
+				worldtransform_.translation_ += usuallyVelocity;
+			}
+			else {
+				usually = 1;
+			}
+
+			if (worldtransform_.translation_.x >= -20 && usually == 1) {
+				worldtransform_.translation_ -= usuallyVelocity;
+			}
+			else {
+				usually = 0;
+			}
+
+			//発射タイマーカウントダウン
+			fireTimer--;
+			if (fireTimer <= 0) {
+				//弾を発射
+				Fire();
+				//発射タイマーを初期化
+				fireTimer = kFireInterval;
+			}
+			break;
+		case Phase::wait:
+			worldtransform_.translation_ = Vector3(0, 0, 20);
+			break;
 		}
-		break;
-	case Phase::Leave:
-		//移動
-		worldtransform_.translation_ += leaveVelocity;
-		break;
+
+		if (input_->TriggerKey(DIK_1)) {
+			phase_ = Phase::Approach;
+		}
+		else if (input_->TriggerKey(DIK_2)) {
+			phase_ = Phase::usually;
+		}
+		else if (input_->TriggerKey(DIK_3)) {
+			phase_ = Phase::wait;
+		}
+
+		//行列更新
+		worldtransform_.matWorld_ = affine_->World(affine_->Scale(affine_->Scale_), affine_->Rot(affine_->RotX(affine_->Rot_.x), affine_->RotY(affine_->Rot_.y), affine_->RotZ(affine_->Rot_.z)), affine_->Trans(worldtransform_.translation_));
+		worldtransform_.TransferMatrix();
+
+
+		//弾更新
+		for (std::unique_ptr<EnemyBullet>& bullet : bullets_) {
+			bullet->Update();
+		}
 	}
 
-
-	//行列更新
-	worldtransform_.matWorld_ = affine_->World(affine_->Scale(affine_->Scale_), affine_->Rot(affine_->RotX(affine_->Rot_.x), affine_->RotY(affine_->Rot_.y), affine_->RotZ(affine_->Rot_.z)), affine_->Trans(worldtransform_.translation_));
-	worldtransform_.TransferMatrix();
-
-
-	//弾更新
-	for (std::unique_ptr<EnemyBullet>& bullet : bullets_) {
-		bullet->Update();
-	}
 }
 
 void Enemy::Draw(const ViewProjection& viewProjection) {
@@ -91,18 +143,21 @@ void Enemy::Fire() {
 
 		//弾の速度
 		const float kBulletSpeed = 1.0f;
-		//Vector3 velocity(0, 0, kBulletSpeed);
+		Vector3 velocity(0, 0, kBulletSpeed);
 
-		//自キャラのワールド座標を取得
-		Vector3 playerWorldPos = player_->GetWorldPosition();
-		//敵キャラのワールド座標を取得
-		Vector3 enemyWorldPos = GetWorldPosition();
-		//敵キャラ→自キャラの差分ベクトルを求める
-		Vector3 velocity = velocity.sub(enemyWorldPos, playerWorldPos);
-		//ベクトルの正規化
-		velocity.normalize();
-		////ベクトルの長さを速さに合わせる
-		//velocity *= kBulletSpeed;
+		if (phase_ == Phase::Approach) {
+
+			//自キャラのワールド座標を取得
+			Vector3 playerWorldPos = player_->GetWorldPosition();
+			//敵キャラのワールド座標を取得
+			Vector3 enemyWorldPos = GetWorldPosition();
+			//敵キャラ→自キャラの差分ベクトルを求める
+			Vector3 velocity = velocity.sub(enemyWorldPos, playerWorldPos);
+			//ベクトルの正規化
+			velocity.normalize();
+			////ベクトルの長さを速さに合わせる
+			//velocity *= kBulletSpeed;
+		}
 
 		//弾を生成し初期化
 		std::unique_ptr<EnemyBullet> newBullet = std::make_unique<EnemyBullet>();
@@ -111,6 +166,27 @@ void Enemy::Fire() {
 		//弾を登録する
 		bullets_.push_back(std::move(newBullet));
 
+}
+
+void Enemy::TargetFire() {
+
+	assert(player_);
+
+	//自キャラのワールド座標を取得
+	Vector3 playerWorldPos = player_->GetWorldPosition();
+	//敵キャラのワールド座標を取得
+	Vector3 enemyWorldPos = GetWorldPosition();
+	//敵キャラ→自キャラの差分ベクトルを求める
+	Vector3 velocity = velocity.sub(enemyWorldPos, playerWorldPos);
+	//ベクトルの正規化
+	velocity.normalize();
+
+	//弾を生成し初期化
+	std::unique_ptr<EnemyBullet> newBullet = std::make_unique<EnemyBullet>();
+	newBullet->Initialize(model_, worldtransform_.translation_, velocity);
+
+	//弾を登録する
+	bullets_.push_back(std::move(newBullet));
 }
 
 void Enemy::InitializeApproach() {
@@ -130,5 +206,5 @@ Vector3 Enemy::GetWorldPosition() {
 }
 
 void Enemy::OnCollision() {
-
+	life--;
 }

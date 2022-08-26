@@ -25,6 +25,8 @@ public:
 
 	void Fire();
 
+	void TargetFire();
+
 	//接近フェーズ初期化
 	void InitializeApproach();
 
@@ -50,6 +52,7 @@ private:
 	Affine* affine_ = nullptr;
 
 	Input* input_ = nullptr;
+	DebugText* debugText_ = nullptr;
 
 	//自キャラ
 	Player* player_ = nullptr;
@@ -58,9 +61,15 @@ private:
 	enum class Phase {
 		Approach,//接近する
 		Leave,   //離脱する
+		usually, //通常モード
+		wait, //待機
 	};
 
-	Phase phase_ = Phase::Approach;
+	Phase phase_ = Phase::wait;
+
+	int usually = 0;
+
+	int life = 10;
 
 private:
 	//弾
